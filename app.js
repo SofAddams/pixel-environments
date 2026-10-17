@@ -259,9 +259,7 @@ function buildCharUI() {
         for (const [v, l] of Char.OPTIONS[key]) { const b = el('button', { textContent: l }); b.dataset.v = v; input.append(b); }
         input.onclick = e => { if (e.target.dataset.v) { ch[key] = e.target.dataset.v; charChanged(); } };
       } else if (kind === 'select') {
-        input = el('select');
-        for (const [v, l] of Char.OPTIONS[key]) input.append(el('option', { value: v, textContent: l }));
-        input.onchange = () => { ch[key] = input.value; charChanged(); };
+        input = previewSelect(key);
       } else if (kind === 'range') {
         input = el('input', { type: 'range', min: 0, max: 100 });
         input.oninput = () => { ch[key] = input.value / 100; charChanged(); };
@@ -296,6 +294,92 @@ function buildCharUI() {
   $('chSave').onclick = () => { addSaved(ch); renderSaved(); };
 }
 
+// A dropdown that shows each option on the character while you hover or arrow through it.
+// Leaving the list or pressing Esc puts the character back; clicking or Enter keeps it.
+let openMenu = null;
+function previewSelect(key) {
+  const opts = Char.OPTIONS[key];
+  const wrap = el('div', { className: 'dd' });
+  const btn = el('button', { type: 'button', className: 'dd-btn' });
+  const list = el('ul', { className: 'dd-list', hidden: true });
+  list.setAttribute('role', 'listbox');
+  btn.setAttribute('aria-haspopup', 'listbox');
+  btn.setAttribute('aria-expanded', 'false');
+  const items = opts.map(([v, l]) => {
+    const li = el('li', { textContent: l });
+    li.dataset.v = v;
+    li.setAttribute('role', 'option');
+    list.append(li);
+    return li;
+  });
+  wrap.append(btn, list);
+
+  let committed, active = -1;
+  wrap.setValue = v => {
+    committed = v;
+    btn.textContent = (opts.find(o => o[0] === v) || opts[0])[1];
+    for (const li of items) li.setAttribute('aria-selected', li.dataset.v === v);
+  };
+
+  const preview = v => { if (ch[key] !== v) { ch[key] = v; render(); } };
+  const highlight = (i, scroll) => {
+    active = i;
+    items.forEach((li, j) => li.classList.toggle('active', j === i));
+    if (i >= 0) { preview(items[i].dataset.v); if (scroll) items[i].scrollIntoView({ block: 'nearest' }); }
+    else preview(committed);
+  };
+  const place = () => {
+    const r = btn.getBoundingClientRect();
+    list.style.left = r.left + 'px'; list.style.width = r.width + 'px';
+    const below = innerHeight - r.bottom - 8, above = r.top - 8;
+    const up = below < 200 && above > below;
+    list.style.maxHeight = Math.max(120, up ? above : below) + 'px';
+    list.style.top = up ? '' : r.bottom + 4 + 'px';
+    list.style.bottom = up ? innerHeight - r.top + 4 + 'px' : '';
+  };
+  const open = () => {
+    if (openMenu) openMenu.close(false);
+    openMenu = wrap;
+    list.hidden = false; btn.setAttribute('aria-expanded', 'true');
+    place();
+    const i = items.findIndex(li => li.dataset.v === committed);
+    items.forEach((li, j) => li.classList.toggle('active', j === i));
+    active = i;
+    if (i >= 0) items[i].scrollIntoView({ block: 'nearest' });
+  };
+  wrap.close = keep => {
+    if (openMenu !== wrap) return;
+    openMenu = null;
+    list.hidden = true; btn.setAttribute('aria-expanded', 'false');
+    if (keep && active >= 0) { ch[key] = items[active].dataset.v; charChanged(); }
+    else preview(committed);
+  };
+
+  btn.onclick = () => openMenu === wrap ? wrap.close(false) : open();
+  list.onmouseover = e => { const i = items.indexOf(e.target.closest('li')); if (i >= 0 && i !== active) highlight(i); };
+  list.onmouseleave = () => highlight(-1);
+  list.onmousedown = e => e.preventDefault(); // keep focus on the button
+  list.onclick = e => { const i = items.indexOf(e.target.closest('li')); if (i >= 0) { active = i; wrap.close(true); } };
+  btn.onblur = () => wrap.close(false);
+  btn.onkeydown = e => {
+    e.stopPropagation(); // keep Space/R/arrows away from the playback shortcuts
+    const isOpen = openMenu === wrap;
+    const step = d => { const from = active < 0 ? items.findIndex(li => li.dataset.v === committed) : active; highlight(Math.max(0, Math.min(items.length - 1, from + d)), true); };
+    switch (e.key) {
+      case 'ArrowDown': e.preventDefault(); isOpen ? step(1) : open(); break;
+      case 'ArrowUp': e.preventDefault(); isOpen ? step(-1) : open(); break;
+      case 'Home': if (isOpen) { e.preventDefault(); highlight(0, true); } break;
+      case 'End': if (isOpen) { e.preventDefault(); highlight(items.length - 1, true); } break;
+      case 'Enter': case ' ': e.preventDefault(); isOpen ? wrap.close(true) : open(); break;
+      case 'Escape': if (isOpen) { e.preventDefault(); wrap.close(false); } break;
+      case 'Tab': wrap.close(false); break;
+    }
+  };
+  return wrap;
+}
+addEventListener('resize', () => openMenu && openMenu.close(false));
+addEventListener('scroll', e => { if (openMenu && !openMenu.contains(e.target)) openMenu.close(false); }, true);
+
 function syncChar() {
   $('chShow').checked = ch.show;
   renderSaved();
@@ -305,7 +389,7 @@ function syncChar() {
     const key = input.dataset.key2, v = ch[key];
     switch (input.dataset.kind) {
       case 'seg': for (const b of input.children) b.classList.toggle('on', b.dataset.v === v); break;
-      case 'select': input.value = v; break;
+      case 'select': input.setValue(v); break;
       case 'range': input.value = Math.round(v * 100); break;
       case 'swatch':
         for (const b of input.querySelectorAll('.swatch')) b.classList.toggle('on', b.dataset.v.toLowerCase() === v.toLowerCase());
