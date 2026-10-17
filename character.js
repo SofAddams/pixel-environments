@@ -538,8 +538,11 @@ function place(scene, ch) {
     const lane = SW + 30 * k;
     fx = (((ch.x * SW + t * 9 * S + 15 * k) % lane) + lane) % lane - 15 * k;
   }
-  const xi = Math.max(0, Math.min(SW - 1, Math.round(fx))), g = scene.groundTop[xi];
-  return { fx, fy: Math.round(g + 2 + (SH - g - 3) * ch.depth) };
+  const xi = Math.max(0, Math.min(SW - 1, Math.round(fx)));
+  // with a wildfire, stand on the unburnt ground in front of the fire line, not inside the flames
+  const wild = scene.fires.find(f => f.kind === 'wild');
+  const g = wild ? Math.min(SH - 3, wild.y + 2) : scene.groundTop[xi];
+  return { fx, fy: Math.round(g + 2 + Math.max(0, SH - g - 3) * ch.depth) };
 }
 
 // Draw the character into a scene frame, lit like the scene.
