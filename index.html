@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pixel Environments</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Silkscreen&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <main class="stage">
+    <header class="topbar">
+      <div class="brand"><span class="logo"></span>Pixel Environments</div>
+      <div class="meta" id="meta"></div>
+    </header>
+    <div class="viewport" id="viewport"><canvas id="screen"></canvas></div>
+    <div class="toolbar">
+      <button id="play" class="btn" title="Play / pause (Space)">Pause</button>
+      <button id="stepBtn" class="btn" title="Advance one frame (→)">Step</button>
+      <button id="reseed" class="btn" title="New random seed (R)">New seed</button>
+      <span class="spacer"></span>
+      <label class="inline">Zoom
+        <select id="zoom">
+          <option value="fit">Fit</option><option value="1">1×</option><option value="2">2×</option>
+          <option value="3">3×</option><option value="4">4×</option><option value="6">6×</option><option value="8">8×</option>
+        </select>
+      </label>
+    </div>
+  </main>
+
+  <aside class="panel">
+    <nav class="tabs" id="tabs">
+      <button data-tab="scene" class="on">Scene</button>
+      <button data-tab="character">Character</button>
+      <button data-tab="share">Share &amp; export</button>
+    </nav>
+
+    <div class="tab" data-tab="scene">
+      <section>
+        <h2>Presets</h2>
+        <div class="presets" id="presets"></div>
+      </section>
+
+      <section>
+        <h2>Scene</h2>
+        <div class="field"><label>Season</label><select id="season"></select></div>
+        <div class="field"><label>Time</label><div class="seg" data-key="time"></div></div>
+        <div class="field"><label>Sky</label>
+          <div class="seg" data-key="sky">
+            <button data-v="clear">Clear</button><button data-v="overcast">Overcast</button><button data-v="smoke">Smoke</button>
+          </div>
+        </div>
+        <div class="field"><label>Trees</label>
+          <select id="trees">
+            <option value="round">Leafy</option><option value="pine">Pine</option><option value="mixed">Mixed</option>
+            <option value="bare">Bare</option><option value="cactus">Cactus</option><option value="none">None</option>
+          </select>
+        </div>
+        <div class="field"><label>Density <output id="densityOut"></output></label><input type="range" id="density" min="0" max="100"></div>
+        <div class="field row">
+          <label class="check"><input type="checkbox" id="mountains"> Mountains</label>
+          <label class="check"><input type="checkbox" id="water"> Lake</label>
+        </div>
+      </section>
+
+      <section>
+        <h2>Effects</h2>
+        <div class="chips" id="fx"></div>
+      </section>
+
+      <section>
+        <h2>Motion</h2>
+        <div class="field"><label>Intensity <output id="intensityOut"></output></label><input type="range" id="intensity" min="0" max="100"></div>
+        <div class="field"><label>Wind <output id="windOut"></output></label><input type="range" id="wind" min="-100" max="100"></div>
+        <div class="field"><label>Speed <output id="speedOut"></output></label><input type="range" id="speed" min="10" max="200"></div>
+        <div class="field"><label>Frame rate <output id="fpsOut"></output></label><input type="range" id="fps" min="4" max="30"></div>
+      </section>
+
+      <section>
+        <h2>Canvas</h2>
+        <div class="field"><label>Resolution</label>
+          <select id="res">
+            <option value="128x72">128 × 72</option><option value="160x90">160 × 90</option>
+            <option value="192x108">192 × 108</option><option value="256x144">256 × 144</option>
+            <option value="320x180">320 × 180</option><option value="128x128">128 × 128 (square)</option>
+            <option value="108x192">108 × 192 (portrait)</option>
+          </select>
+        </div>
+        <div class="field"><label>Seed</label>
+          <div class="row"><input type="number" id="seed" min="1" max="999999"><button id="dice" class="btn" title="Random seed">Roll</button></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="tab" data-tab="character" hidden>
+      <section class="char-head">
+        <div class="char-preview"><canvas id="charPreview" width="26" height="44"></canvas></div>
+        <div class="char-actions">
+          <label class="check"><input type="checkbox" id="chShow"> Show in scene</label>
+          <button id="chRandom" class="btn">Randomize</button>
+          <button id="chAvatar" class="btn">Download avatar</button>
+          <button id="chReset" class="btn subtle">Reset</button>
+        </div>
+      </section>
+      <div id="charControls"></div>
+    </div>
+
+    <div class="tab" data-tab="share" hidden>
+      <section>
+        <h2>Share</h2>
+        <p class="hint">The link stores your scene and character, so whoever opens it sees exactly what you made and can remix it.</p>
+        <div class="exports"><button id="shareLink" class="btn primary">Copy share link</button></div>
+        <p class="status" id="shareStatus"></p>
+      </section>
+      <section>
+        <h2>Export</h2>
+        <div class="field row">
+          <label class="inline">Frames
+            <select id="frames"><option>24</option><option selected>48</option><option>96</option><option>144</option></select>
+          </label>
+          <label class="inline">Scale
+            <select id="scale"><option>1</option><option>2</option><option>3</option><option selected>4</option><option>6</option><option>8</option></select>
+          </label>
+        </div>
+        <div class="exports">
+          <button id="exGif" class="btn primary">GIF</button>
+          <button id="exSheet" class="btn">Sprite sheet</button>
+          <button id="exPng" class="btn">PNG frame</button>
+          <button id="exChar" class="btn">Character sheet</button>
+        </div>
+        <p class="hint">Character sheet: 8 transparent frames of the current pose, for games.</p>
+        <p class="status" id="status"></p>
+      </section>
+    </div>
+  </aside>
+</div>
+<script src="engine.js"></script>
+<script src="character.js"></script>
+<script src="gif-encoder.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
