@@ -530,18 +530,24 @@ function sprite(ch, t, opts = {}) {
   return { w: outW, h: outH, d: out, footY: foot, cx: lying ? 22 : 13 + OX - dx, hop };
 }
 
-// Draw the character into a scene frame, lit like the scene.
-function render(scene, ch) {
-  if (!ch || !ch.show) return;
-  const { W: SW, H: SH, S, t, frame: f, P } = scene;
-  const k = Math.max(1, Math.round(S));
+// Where the character's feet are in the scene (walking moves them across).
+function place(scene, ch) {
+  const { W: SW, H: SH, S, t } = scene, k = Math.max(1, Math.round(S));
   let fx = ch.x * SW;
   if (ch.pose === 'walk') {
     const lane = SW + 30 * k;
     fx = (((ch.x * SW + t * 9 * S + 15 * k) % lane) + lane) % lane - 15 * k;
   }
   const xi = Math.max(0, Math.min(SW - 1, Math.round(fx))), g = scene.groundTop[xi];
-  const fy = Math.round(g + 2 + (SH - g - 3) * ch.depth), cx = Math.round(fx);
+  return { fx, fy: Math.round(g + 2 + (SH - g - 3) * ch.depth) };
+}
+
+// Draw the character into a scene frame, lit like the scene.
+function render(scene, ch) {
+  if (!ch || !ch.show) return;
+  const { W: SW, H: SH, S, t, frame: f, P } = scene;
+  const k = Math.max(1, Math.round(S));
+  const { fx, fy } = place(scene, ch), cx = Math.round(fx);
   // turn towards the nearest campfire (used by the marshmallow stick)
   let dir = 1, best = Infinity;
   for (const fr of scene.fires) if (fr.kind === 'camp' && Math.abs(fr.x - fx) < best) { best = Math.abs(fr.x - fx); dir = fr.x < fx ? -1 : 1; }
@@ -554,11 +560,22 @@ function render(scene, ch) {
     if (X >= 0 && X < SW && Y >= 0 && Y < SH) f[Y * SW + X] = pack(mul(unpack(f[Y * SW + X]), 0.7));
   }
   const ox = cx - spr.cx * k, oy = fy - spr.footY * k - hop;
+  // warm light from nearby fires (the scene's own glow pass runs before the character)
+  let warm = 0;
+  for (const fr of scene.fires) {
+    if (fr.kind === 'wild') warm += 0.12 + (1 - P.bright) * 0.3;
+    else {
+      const dd = Math.hypot(fr.x - fx, (fr.y - fy) * 1.2) / (28 * S);
+      if (dd < 1) warm += (1 - dd) * (1 - dd) * (0.15 + (1 - P.bright) * 0.8) * 0.7;
+    }
+  }
+  warm = Math.min(0.6, warm);
   for (let sy = 0; sy < spr.h; sy++) for (let sx = 0; sx < spr.w; sx++) {
     const p = spr.d[sy * spr.w + sx];
     if (!p) continue;
     // lit like the scene, but kept a little brighter so the character stays readable at night
-    const rgb = unpack(p), c = pack(mix(rgb, P.light(rgb), 0.75));
+    const rgb = mix(unpack(p), P.light(unpack(p)), 0.75);
+    const c = pack([rgb[0] + 230 * warm, rgb[1] + 110 * warm, rgb[2] + 25 * warm]);
     for (let j = 0; j < k; j++) {
       const Y = oy + sy * k + j;
       if (Y < 0 || Y >= SH) continue;
@@ -583,5 +600,5 @@ function random(rand = Math.random) {
   };
 }
 
-global.PixelCharacter = { OPTIONS, PALETTES, DEFAULT, sprite, render, random };
+global.PixelCharacter = { OPTIONS, PALETTES, DEFAULT, sprite, render, place, random };
 })(window);
