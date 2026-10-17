@@ -29,7 +29,6 @@ let cfg = fromPreset(presetName, { seed: 1337, width: 192, height: 108, speed: 1
 let ch = { ...Char.DEFAULT };
 const scene = new Scene();
 scene.actor = s => Char.render(s, ch);
-scene.actorFoot = s => (ch.show ? Char.place(s, ch).fy : Infinity);
 const canvas = $('screen'), ctx = canvas.getContext('2d');
 let playing = true;
 

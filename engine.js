@@ -700,19 +700,17 @@ class Scene {
     if (cfg.water) this.drawWater();
     over(f, this.near);
     if (fx.heat) this.heatHaze();
-    // fires (and their smoke) behind the character's feet go behind it, the rest in front;
-    // the character applies the fire light to itself, so it is drawn after the glow
-    const ay = this.actor && this.actorFoot ? this.actorFoot(this) : Infinity;
     this.drawGlow();
-    this.drawFires(fr => fr.y <= ay);
+    this.drawFires();
     this.drawSmoke();
-    if (this.actor) this.actor(this);
-    this.drawFires(fr => fr.y > ay);
     this.drawEmbers();
     this.drawFireflies();
     this.drawFalling();
     this.drawRain();
     if (fx.fog) this.drawFog();
+    // the character is always the top layer (it lights itself from nearby fires);
+    // only the lightning flash goes over it
+    if (this.actor) this.actor(this);
     this.drawLightning();
     return this.image;
   }
@@ -822,10 +820,9 @@ class Scene {
     }
   }
 
-  drawFires(filter = () => true) {
+  drawFires() {
     const { W, H } = this, f = this.frame;
     for (const fr of this.fires) {
-      if (!filter(fr)) continue;
       const sx = fr.kind === 'wild' ? 0 : fr.x - (fr.w >> 1), sy = fr.y - fr.h + 1;
       for (let y = 0; y < fr.h; y++) {
         const Y = sy + y;
