@@ -332,7 +332,9 @@ function drawPreview() {
   const spr = Char.sprite(ch, scene.t || 0);
   if (pcanvas.width !== spr.w || pcanvas.height !== spr.h) {
     pcanvas.width = spr.w; pcanvas.height = spr.h;
-    pcanvas.style.width = spr.w * 4 + 'px'; pcanvas.style.height = spr.h * 4 + 'px';
+    // fit any pose (the sleeping one is wide) inside the fixed preview box
+    const k = Math.min(104 / spr.w, 176 / spr.h);
+    pcanvas.style.width = spr.w * k + 'px'; pcanvas.style.height = spr.h * k + 'px';
   }
   pctx.putImageData(new ImageData(new Uint8ClampedArray(spr.d.buffer), spr.w, spr.h), 0, 0);
 }

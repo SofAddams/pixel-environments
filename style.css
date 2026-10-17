@@ -141,3 +141,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 .seg.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; }
 .seg.grid button { padding: 6px 2px; }
 #chFire { width: 100%; margin-top: 2px; }
+.panel { overflow-x: hidden; }
+.char-preview { width: 122px; height: 194px; display: grid; place-items: center; }
+.char-actions { min-width: 0; }
+.char-actions .btn { white-space: normal; }
