@@ -145,3 +145,20 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 .char-preview { width: 122px; height: 194px; display: grid; place-items: center; }
 .char-actions { min-width: 0; }
 .char-actions .btn { white-space: normal; }
+.saved { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; margin-bottom: 8px; }
+.saved:empty { display: none; }
+.saved-item { position: relative; }
+.saved-pick {
+  width: 100%; padding: 4px 0; border: 2px solid var(--border); border-radius: 6px; cursor: pointer;
+  background: repeating-conic-gradient(#1f2430 0 25%, #1a1e28 0 50%) 0 0 / 8px 8px;
+}
+.saved-pick.on { border-color: var(--accent); }
+.saved-pick canvas { width: 34px; height: 44px; image-rendering: pixelated; display: block; margin: 0 auto; }
+.saved-del {
+  position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; border-radius: 50%; padding: 0;
+  border: 1px solid var(--border); background: var(--panel-2); color: var(--muted); font-size: 12px; line-height: 1;
+  cursor: pointer; display: none;
+}
+.saved-item:hover .saved-del, .saved-del:focus { display: block; }
+@media (hover: none) { .saved-del { display: block; } }
+#chSave { width: 100%; }

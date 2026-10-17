@@ -294,10 +294,12 @@ function buildCharUI() {
   $('chRandom').onclick = () => { ch = { ...Char.random(), show: true, pose: ch.pose, x: ch.x, depth: ch.depth }; charChanged(); };
   $('chReset').onclick = () => { ch = { ...Char.DEFAULT }; charChanged(); };
   $('chAvatar').onclick = exportAvatar;
+  $('chSave').onclick = () => { addSaved(ch); renderSaved(); };
 }
 
 function syncChar() {
   $('chShow').checked = ch.show;
+  renderSaved();
   const fireBtn = $('chFire');
   if (fireBtn) { fireBtn.disabled = !cfg.fx.campfire; fireBtn.title = cfg.fx.campfire ? '' : 'Turn on Campfire in the Scene tab first'; }
   for (const input of $('charControls').querySelectorAll('[data-key2]')) {
@@ -340,6 +342,44 @@ function drawPreview() {
   pctx.putImageData(new ImageData(new Uint8ClampedArray(spr.d.buffer), spr.w, spr.h), 0, 0);
 }
 
+// ---------- saved characters (kept in this browser) ----------
+const SAVED_KEY = 'pixel-env-characters';
+// a character's look, ignoring where it stands and what it's doing
+const LOOK_SKIP = ['show', 'pose', 'x', 'depth'];
+const look = c => JSON.stringify(Object.keys(Char.DEFAULT).filter(k => !LOOK_SKIP.includes(k)).map(k => c[k]));
+
+function readSaved() {
+  try { const a = JSON.parse(localStorage.getItem(SAVED_KEY)); return Array.isArray(a) ? a.map(sanitizeChar) : []; }
+  catch (e) { return []; }
+}
+function writeSaved(list) {
+  try { localStorage.setItem(SAVED_KEY, JSON.stringify(list)); return true; } catch (e) { return false; }
+}
+function addSaved(c) {
+  const list = readSaved();
+  if (list.some(x => look(x) === look(c))) return;
+  list.unshift({ ...c });
+  if (!writeSaved(list.slice(0, 24))) $('savedHint').textContent = 'This browser is blocking storage, so characters can’t be saved.';
+}
+
+function renderSaved() {
+  const box = $('savedChars'), list = readSaved(), current = look(ch);
+  box.innerHTML = '';
+  list.forEach((c, i) => {
+    const spr = Char.sprite({ ...c, pose: 'idle', mobility: c.mobility === 'cane' ? 'none' : c.mobility }, 0.4);
+    const cv = el('canvas', { width: spr.w, height: spr.h });
+    cv.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(spr.d.buffer), spr.w, spr.h), 0, 0);
+    const pick = el('button', { className: 'saved-pick' + (look(c) === current ? ' on' : ''), title: 'Use this character' }, cv);
+    pick.onclick = () => { ch = { ...c, show: true, pose: ch.pose, x: ch.x, depth: ch.depth }; charChanged(); };
+    const del = el('button', { className: 'saved-del', textContent: '×', title: 'Remove from saved' });
+    del.onclick = () => { list.splice(i, 1); writeSaved(list); renderSaved(); };
+    box.append(el('div', { className: 'saved-item' }, pick, del));
+  });
+  $('savedHint').textContent = list.length ? '' : 'Save characters to switch between them later. They stay in this browser.';
+  $('chSave').disabled = list.some(x => look(x) === current);
+  $('chSave').textContent = $('chSave').disabled ? 'Saved' : 'Save this character';
+}
+
 // ---------- state: share links + local save ----------
 const isColor = v => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v);
 function sanitizeChar(c) {
@@ -379,7 +419,10 @@ function loadState() {
     const m = location.hash.match(/^#s=([\w-]+)/);
     if (m) data = JSON.parse(b64.dec(m[1]));
   } catch (e) { console.warn('Bad share link', e); }
-  if (!data) try { data = JSON.parse(localStorage.getItem('pixel-env-state')); } catch (e) { /* storage unavailable */ }
+  let own = null;
+  try { own = JSON.parse(localStorage.getItem('pixel-env-state')); } catch (e) { /* storage unavailable */ }
+  if (data && own && own.c) addSaved(sanitizeChar(own.c)); // a shared link shouldn't wipe out your own character
+  if (!data) data = own;
   if (!data) return;
   cfg = sanitizeScene(data.s);
   ch = sanitizeChar(data.c);
